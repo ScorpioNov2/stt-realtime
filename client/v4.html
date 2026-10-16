@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Vox Flow · Russian Speech Studio</title>
+    <!-- Wispr Flow Design Tokens + Modern Learning App UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ---------- Wispr Flow Design Tokens (semantic, no magic numbers) ---------- */
+        :root {
+            /* Color palette - from Wispr Flow spec, adapted for readability */
+            --color-text-primary: #1a1a1a;
+            --color-text-secondary: #ffffeb;
+            --color-text-tertiary: #222222;
+            --color-text-inverse: #333333;
+            --color-surface-base: #ffffff;
+            --color-surface-muted: #f0d7ff;
+            --color-surface-raised: #f5f3f0;
+            --color-border-light: #eae6e0;
+            --color-accent: #6c2bd9;
+            --color-accent-soft: #f0e6ff;
+            --color-record-active: #d32f2f;
+            --color-record-glow: rgba(211, 47, 47, 0.15);
+            
+            /* Typography */
+            --font-family-primary: 'Figtree', Arial, sans-serif;
+            --font-size-base: 16px;
+            --font-weight-base: 400;
+            --line-height-base: 20.8px;
+            --font-size-xs: 14px;
+            --font-size-sm: 16px;
+            --font-size-md: 20px;
+            --font-size-lg: 24px;
+            --font-size-xl: 32px;
+            --font-size-2xl: 48px;
+            --font-size-3xl: 64px;
+            --font-size-4xl: 120px;
+            
+            /* Spacing */
+            --space-1: 8px;
+            --space-2: 12.4px;
+            --space-3: 14px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+            --space-7: 48px;
+            --space-8: 50px;
+            
+            /* Radius */
+            --radius-xs: 12px;
+            --radius-sm: 16px;
+            --radius-md: 32px;
+            --radius-lg: 40px;
+            --radius-xl: 64px;
+            --radius-2xl: 80px;
+            --radius-step7: 1000px;
+            
+            /* Motion */
+            --motion-instant: 200ms;
+            --motion-fast: 300ms;
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.06), 0 4px 8px rgba(0, 0, 0, 0.02);
+            --shadow-focus: 0 0 0 3px rgba(108, 43, 217, 0.4);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: var(--color-surface-raised);
+            font-family: var(--font-family-primary);
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-base);
+            line-height: var(--line-height-base);
+            color: var(--color-text-primary);
+            padding: var(--space-6);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* main container */
+        .app-container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--color-surface-base);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: background var(--motion-fast) ease, border-color var(--motion-fast) ease;
+        }
+        
+        /* header */
+        .header {
+            padding: var(--space-5) var(--space-6) var(--space-4) var(--space-6);
+            border-bottom: 1px solid var(--color-border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+        }
+        
+        .title-section h1 {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: var(--color-text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .title-section p {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-inverse);
+            opacity: 0.75;
+        }
+        
+        .status-group {
+            display: flex;
+            gap: var(--space-3);
+            align-items: center;
+        }
+        
+        .status-badge {
+            background: var(--color-surface-muted);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-step7);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--color-text-tertiary);
+        }
+        
+        .led-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2e7d32;
+            transition: all var(--motion-instant);
+        }
+        .led-dot.recording {
+            background: var(--color-record-active);
+            animation: pulse 1.2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: scale(0.9);}
+            100% { opacity: 1; transform: scale(1.2);}
+        }
+        
+        /* button styles with full states */
+        .btn {
+            font-family: var(--font-family-primary);
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            padding: var(--space-2) var(--space-5);
+            border-radius: var(--radius-step7);
+            border: none;
+            cursor: pointer;
+            transition: all var(--motion-instant) ease;
+            background: var(--color-surface-raised);
+            color: var(--color-text-primary);
+            border: 1px solid transparent;
+        }
+        
+        .btn-primary {
+            background: var(--color-accent);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-primary:hover {
+            background: #5a1fb5;
+            transform: translateY(-1px);
+        }
+        .btn-primary:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-focus);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+        .btn-primary.recording-active {
+            background: var(--color-record-active);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border-color: var(--color-border-light);
+        }
+        .btn-secondary:hover {
+            background: var(--color-surface-muted);
+        }
+        .btn-secondary:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-focus);
+        }
+        .btn-secondary:active {
+            transform: translateY(1px);
+        }
+        
+        /* controls bar */
+        .controls {
+            padding: var(--space-4) var(--space-6);
+            display: flex;
+            gap: var(--space-3);
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--color-border-light);
+        }
+        
+        /* unified transcript panel */
+        .transcript-panel {
+            margin: var(--space-5) var(--space-6);
+            background: var(--color-surface-raised);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--color-border-light);
+        }
+        
+        .message-area {
+            height: 460px;
+            overflow-y: auto;
+            padding: var(--space-4);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            scroll-behavior: smooth;
+        }
+        
+        /* custom scroll */
+        .message-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .message-area::-webkit-scrollbar-track {
+            background: #e9e4dc;
+            border-radius: var(--radius-step7);
+        }
+        .message-area::-webkit-scrollbar-thumb {
+            background: #cbc3b5;
+            border-radius: var(--radius-step7);
+        }
+        
+        /* message bubbles */
+        .msg-item {
+            display: flex;
+            flex-direction: column;
+            animation: fadeSlide 0.2s ease;
+        }
+        
+        .msg-bubble {
+            background: var(--color-surface-base);
+            border-radius: var(--radius-sm);
+            padding: var(--space-3) var(--space-4);
+            border-left: 4px solid var(--color-accent);
+            box-shadow: var(--shadow-sm);
+            max-width: 94%;
+        }
+        
+        .msg-time {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-inverse);
+            opacity: 0.7;
+            margin-bottom: var(--space-1);
+            font-weight: 500;
+        }
+        
+        .msg-text {
+            font-size: var(--font-size-sm);
+            line-height: 1.5;
+            color: var(--color-text-primary);
+            word-break: break-word;
+        }
+        
+        /* interim message style */
+        .msg-interim {
+            background: var(--color-surface-muted);
+            border-left-color: #f5a623;
+        }
+        .msg-interim .msg-text {
+            font-weight: 500;
+        }
+        .cursor-blink {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: var(--color-accent);
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .empty-placeholder {
+            text-align: center;
+            color: var(--color-text-inverse);
+            font-size: var(--font-size-sm);
+            padding: var(--space-7) var(--space-5);
+            background: transparent;
+            border-radius: var(--radius-sm);
+            opacity: 0.7;
+        }
+        
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        footer {
+            padding: var(--space-4) var(--space-6) var(--space-5);
+            font-size: var(--font-size-xs);
+            text-align: center;
+            color: var(--color-text-inverse);
+            border-top: 1px solid var(--color-border-light);
+            opacity: 0.7;
+        }
+        
+        /* focus-visible global */
+        button:focus-visible, .theme-toggle:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-focus);
+        }
+        
+        @media (max-width: 680px) {
+            body { padding: var(--space-3); }
+            .controls { padding: var(--space-3) var(--space-4); }
+            .btn { padding: var(--space-1) var(--space-4); font-size: var(--font-size-xs); }
+            .message-area { height: 380px; }
+            .header { padding: var(--space-4); }
+        }
+        
+        /* theme toggle (light/dark using Wispr tokens) */
+        .theme-toggle {
+            background: var(--color-surface-muted);
+            border: none;
+            border-radius: var(--radius-step7);
+            padding: var(--space-1) var(--space-3);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all var(--motion-instant);
+        }
+        .theme-toggle:hover {
+            background: var(--color-accent);
+            color: white;
+        }
+        
+        /* dark variant (respects Wispr Flow but with contrast compliance) */
+        body.dark {
+            --color-surface-base: #121212;
+            --color-surface-raised: #1e1e2a;
+            --color-text-primary: #efefef;
+            --color-text-tertiary: #dddddd;
+            --color-text-inverse: #b0b0b0;
+            --color-border-light: #2c2c3a;
+            --color-surface-muted: #2a2350;
+            --color-accent: #b87cff;
+            --color-accent-soft: #2a2350;
+            background: #0a0a12;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <div class="title-section">
+            <h1>Vox Flow · Русский</h1>
+            <p>речевой тренажёр с распознаванием в реальном времени (Vosk offline)</p>
+        </div>
+        <div class="status-group">
+            <div class="status-badge">
+                <span class="led-dot" id="ledIndicator"></span>
+                <span id="statusText">готов</span>
+            </div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">🌙 Тёмная</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-primary" id="recordBtn">🎙️ Начать запись</button>
+        <button class="btn btn-secondary" id="clearBtn">Очистить лог</button>
+        <button class="btn btn-secondary" id="saveBtn">💾 Сохранить .txt</button>
+    </div>
+    
+    <div class="transcript-panel">
+        <div class="message-area" id="messageArea">
+            <div class="empty-placeholder" id="emptyMsgHint">
+                ✨ Нажмите «Начать запись» и произнесите фразу на русском.<br>
+                Распознавание появится здесь в реальном времени.
+            </div>
+        </div>
+    </div>
+    <footer>
+        WebSocket · 16 kHz real‑time · интеллектуальная прокрутка (не сбивает просмотр)
+    </footer>
+</div>
+
+<script>
+    (function(){
+        // ---------- Wispr Flow UI Implementation – full STT functionality ----------
+        const WS_URL = 'ws://localhost:8001/ws/stream';
+        const TARGET_SR = 16000;
+        const CHUNK_MS = 250;
+        const SAMPLES_PER_CHUNK = Math.floor(TARGET_SR * CHUNK_MS / 1000); // 4000
+        
+        // DOM elements
+        const recordBtn = document.getElementById('recordBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusSpan = document.getElementById('statusText');
+        const ledIndicator = document.getElementById('ledIndicator');
+        const messageArea = document.getElementById('messageArea');
+        const emptyHint = document.getElementById('emptyMsgHint');
+        const themeToggle = document.getElementById('themeToggle');
+        
+        // State (audio & websocket)
+        let ws = null;
+        let audioCtx = null;
+        let mediaStream = null;
+        let processor = null;
+        let isRecording = false;
+        let finalTexts = [];         // storage for saving
+        let pendingBuffer = [];
+        
+        // UI streaming
+        let currentInterimElement = null;
+        let autoScrollEnabled = true;   // only scroll if user is at bottom
+        
+        // ---------- Helpers ----------
+        function removeEmptyPlaceholder() {
+            if (emptyHint && emptyHint.parentNode === messageArea) {
+                emptyHint.remove();
+            }
+        }
+        
+        function updateStatusMessage(msg, isError = false, isRecordingActive = false) {
+            statusSpan.textContent = msg;
+            if (isError) {
+                ledIndicator.style.background = '#d32f2f';
+                ledIndicator.classList.remove('recording');
+            } else if (isRecordingActive) {
+                ledIndicator.classList.add('recording');
+                ledIndicator.style.background = '#d32f2f';
+            } else {
+                ledIndicator.classList.remove('recording');
+                ledIndicator.style.background = '#2e7d32';
+            }
+        }
+        
+        // smart scroll: only if user is at bottom
+        function scrollToBottomIfNeeded() {
+            if (!autoScrollEnabled) return;
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+        
+        function onMessageScroll() {
+            if (!messageArea) return;
+            const scrollTop = messageArea.scrollTop;
+            const maxScroll = messageArea.scrollHeight - messageArea.clientHeight;
+            const atBottom = Math.abs(scrollTop - maxScroll) <= 6;
+            autoScrollEnabled = atBottom;
+        }
+        
+        // Add final message (historical)
+        function addFinalMessage(text) {
+            if (!text || text.trim() === '') return;
+            removeEmptyPlaceholder();
+            finalTexts.push(text.trim());
+            const timestamp = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'msg-item';
+            msgDiv.innerHTML = `
+                <div class="msg-bubble">
+                    <div class="msg-time">${timestamp}</div>
+                    <div class="msg-text">${escapeHtml(text.trim())}</div>
+                </div>
+            `;
+            messageArea.appendChild(msgDiv);
+            // remove interim after final
+            if (currentInterimElement && currentInterimElement.parentNode === messageArea) {
+                currentInterimElement.remove();
+                currentInterimElement = null;
+            }
+            scrollToBottomIfNeeded();
+        }
+        
+        function updateInterimMessage(partialText) {
+            removeEmptyPlaceholder();
+            const display = partialText || '...';
+            if (currentInterimElement && currentInterimElement.parentNode === messageArea) {
+                const textSpan = currentInterimElement.querySelector('.msg-text');
+                if (textSpan) {
+                    textSpan.innerHTML = escapeHtml(display) + '<span class="cursor-blink"></span>';
+                }
+                scrollToBottomIfNeeded();
+                return;
+            }
+            const interimDiv = document.createElement('div');
+            interimDiv.className = 'msg-item';
+            interimDiv.innerHTML = `
+                <div class="msg-bubble msg-interim">
+                    <div class="msg-time">⤷ распознаётся</div>
+                    <div class="msg-text">${escapeHtml(display)}<span class="cursor-blink"></span></div>
+                </div>
+            `;
+            messageArea.appendChild(interimDiv);
+            currentInterimElement = interimDiv;
+            scrollToBottomIfNeeded();
+        }
+        
+        function clearInterim() {
+            if (currentInterimElement && currentInterimElement.parentNode === messageArea) {
+                currentInterimElement.remove();
+                currentInterimElement = null;
+            }
+        }
+        
+        function clearFullHistory() {
+            const allMsgs = messageArea.querySelectorAll('.msg-item');
+            allMsgs.forEach(msg => msg.remove());
+            if (currentInterimElement) currentInterimElement = null;
+            finalTexts = [];
+            if (messageArea.children.length === 0) {
+                if (!emptyHint.parentNode) messageArea.appendChild(emptyHint);
+                emptyHint.style.display = '';
+            }
+            scrollToBottomIfNeeded();
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        // ---------- WebSocket (preserve exact protocol) ----------
+        function connectWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+            ws = new WebSocket(WS_URL);
+            ws.binaryType = 'arraybuffer';
+            
+            ws.onopen = () => {
+                updateStatusMessage('соединено', false, false);
+                recordBtn.disabled = false;
+                if (!isRecording) updateStatusMessage('готово', false);
+            };
+            ws.onclose = () => {
+                updateStatusMessage('потеря связи, переподключение...', true);
+                recordBtn.disabled = true;
+                if (isRecording) stopRecording();
+                setTimeout(() => connectWebSocket(), 2500);
+            };
+            ws.onerror = () => {
+                updateStatusMessage('ошибка WebSocket (порт 8001?)', true);
+                recordBtn.disabled = true;
+            };
+            ws.onmessage = (ev) => {
+                try {
+                    const data = JSON.parse(ev.data);
+                    if (data.type === 'partial') {
+                        const part = data.text || '';
+                        updateInterimMessage(part.length ? part : '…');
+                    } else if (data.type === 'final') {
+                        const final = data.text;
+                        if (final && final.trim().length > 0) {
+                            clearInterim();
+                            addFinalMessage(final.trim());
+                        } else {
+                            clearInterim();
+                        }
+                    } else if (data.type === 'error') {
+                        updateStatusMessage(`ошибка: ${data.text}`, true);
+                    }
+                } catch(e) { console.warn(e); }
+            };
+        }
+        
+        // ---------- Audio capture & resample (unchanged logic, high quality) ----------
+        async function startRecording() {
+            if (isRecording) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                updateStatusMessage('подключение к серверу...', false);
+                connectWebSocket();
+                await new Promise(r => setTimeout(r, 700));
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    updateStatusMessage('сервер не отвечает, проверьте порт 8001', true);
+                    return;
+                }
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                mediaStream = stream;
+                const tempCtx = new AudioContext();
+                const nativeRate = tempCtx.sampleRate;
+                await tempCtx.close();
+                audioCtx = new AudioContext({ sampleRate: nativeRate });
+                const ratio = audioCtx.sampleRate / TARGET_SR;
+                
+                const source = audioCtx.createMediaStreamSource(mediaStream);
+                const bufferSize = 8192;
+                processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+                pendingBuffer = [];
+                
+                processor.onaudioprocess = (e) => {
+                    if (!isRecording) return;
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const outLen = Math.floor(inputData.length / ratio);
+                    for (let i = 0; i < outLen; i++) {
+                        const srcPos = i * ratio;
+                        const idx = Math.floor(srcPos);
+                        const frac = srcPos - idx;
+                        let sample;
+                        if (idx + 1 < inputData.length) {
+                            sample = inputData[idx] * (1 - frac) + inputData[idx + 1] * frac;
+                        } else {
+                            sample = inputData[idx];
+                        }
+                        pendingBuffer.push(sample);
+                    }
+                    while (pendingBuffer.length >= SAMPLES_PER_CHUNK) {
+                        const chunk = pendingBuffer.splice(0, SAMPLES_PER_CHUNK);
+                        sendPCM16(chunk);
+                    }
+                };
+                
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+                await audioCtx.resume();
+                
+                isRecording = true;
+                recordBtn.textContent = '⏹️ Остановить';
+                recordBtn.classList.add('recording-active');
+                updateStatusMessage('активная запись · говорите', false, true);
+                clearInterim();
+                removeEmptyPlaceholder();
+                scrollToBottomIfNeeded();
+            } catch(err) {
+                console.error(err);
+                updateStatusMessage('ошибка микрофона: ' + err.message, true);
+                stopRecording();
+            }
+        }
+        
+        function sendPCM16(floatSamples) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            const int16 = new Int16Array(floatSamples.length);
+            for (let i = 0; i < floatSamples.length; i++) {
+                let s = Math.max(-1, Math.min(1, floatSamples[i]));
+                s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                int16[i] = s;
+            }
+            ws.send(int16.buffer);
+        }
+        
+        function stopRecording() {
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            if (audioCtx) {
+                audioCtx.close().catch(e=>{});
+                audioCtx = null;
+            }
+            pendingBuffer = [];
+            isRecording = false;
+            recordBtn.textContent = '🎙️ Начать запись';
+            recordBtn.classList.remove('recording-active');
+            updateStatusMessage('запись остановлена', false, false);
+            if (currentInterimElement) {
+                const textSpan = currentInterimElement.querySelector('.msg-text');
+                if (textSpan) {
+                    let base = textSpan.innerText.replace(/[|]$/, '');
+                    textSpan.innerHTML = escapeHtml(base) + ' ⏸';
+                }
+            }
+        }
+        
+        // ---------- Button handlers with accessibility ----------
+        recordBtn.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    updateStatusMessage('подключение...');
+                    connectWebSocket();
+                    await new Promise(r => setTimeout(r, 550));
+                    if (!ws || ws.readyState !== WebSocket.OPEN) {
+                        updateStatusMessage('сервер не доступен', true);
+                        return;
+                    }
+                }
+                await startRecording();
+            }
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            clearFullHistory();
+            if (isRecording) {
+                updateStatusMessage('лог очищен, запись продолжается', false, true);
+            } else {
+                updateStatusMessage('история удалена', false);
+            }
+        });
+        
+        saveBtn.addEventListener('click', () => {
+            if (finalTexts.length === 0) {
+                updateStatusMessage('нет текста для сохранения', true);
+                setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN && !isRecording) updateStatusMessage('готово', false);
+                }, 1500);
+                return;
+            }
+            const content = finalTexts.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+            a.download = `russian_phrases_${dateStr}.txt`;
+            a.href = URL.createObjectURL(blob);
+            a.click();
+            URL.revokeObjectURL(a.href);
+            updateStatusMessage('сохранено в .txt', false);
+            setTimeout(() => {
+                if (ws && ws.readyState === WebSocket.OPEN && !isRecording) updateStatusMessage('готово', false);
+            }, 1500);
+        });
+        
+        // Smart scroll listener
+        messageArea.addEventListener('scroll', onMessageScroll);
+        
+        // Theme switcher (Wispr Flow dark/light)
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark');
+                themeToggle.textContent = '☀️ Светлая';
+                localStorage.setItem('vox_theme', 'dark');
+            } else {
+                document.body.classList.remove('dark');
+                themeToggle.textContent = '🌙 Тёмная';
+                localStorage.setItem('vox_theme', 'light');
+            }
+        }
+        const savedTheme = localStorage.getItem('vox_theme');
+        if (savedTheme === 'dark') setTheme('dark');
+        else setTheme('light');
+        
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.body.classList.contains('dark');
+            setTheme(isDark ? 'light' : 'dark');
+        });
+        
+        // Init
+        connectWebSocket();
+        autoScrollEnabled = true;
+        
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (audioCtx) audioCtx.close();
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+        });
+    })();
+</script>
+</body>
+</html>

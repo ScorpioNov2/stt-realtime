@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Speech to Text Stream - Đa Ngôn Ngữ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f7fb;
+        }
+        h2 { color: #333; margin-bottom: 5px; }
+        .control-group {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        select {
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 2px solid #3498db;
+            background-color: white;
+            color: #2c3e50;
+            outline: none;
+            cursor: pointer;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: none;
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        #startBtn { background-color: #2ecc71; color: white; }
+        #startBtn:hover { background-color: #27ae60; }
+        #stopBtn { background-color: #e74c3c; color: white; }
+        #stopBtn:hover { background-color: #c0392b; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #output-box {
+            margin-top: 20px;
+            padding: 20px;
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            min-height: 150px;
+            text-align: left;
+            background-color: #ffffff;
+            line-height: 1.8;
+            font-size: 18px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .interim { color: #95a5a6; font-style: italic; }
+        .final { color: #2c3e50; font-weight: 500; }
+        #status { font-weight: bold; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+    <h2>Demo Speech to Text Stream (JS)</h2>
+    <p>Trạng thái: <span id="status">Sẵn sàng</span></p>
+    
+    <div class="control-group">
+        <label for="langSelect">Chọn ngôn ngữ nói:</label>
+        <select id="langSelect">
+            <option value="vi-VN" selected>Tiếng Việt (Việt Nam)</option>
+            <option value="en-US">Tiếng Anh (Mỹ)</option>
+            <option value="ru-RU">Tiếng Nga (Nga)</option>
+            <option value="zh-CN">Tiếng Trung (Phổ thông)</option>
+            <option value="ko-KR">Tiếng Hàn (Hàn Quốc)</option>
+        </select>
+    </div>
+
+    <button id="startBtn">Bắt đầu nói</button>
+    <button id="stopBtn" disabled>Dừng lại</button>
+
+    <div id="output-box">
+        <span id="finalResult" class="final"></span>
+        <span id="interimResult" class="interim"></span>
+    </div>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            document.getElementById('status').innerText = "Trình duyệt không hỗ trợ Web Speech API. Hãy dùng Chrome/Edge.";
+            document.getElementById('status').style.color = "#e74c3c";
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('langSelect').disabled = true;
+        } else {
+            const recognition = new SpeechRecognition();
+            
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const langSelect = document.getElementById('langSelect');
+            const statusText = document.getElementById('status');
+            const finalSpan = document.getElementById('finalResult');
+            const interimSpan = document.getElementById('interimResult');
+
+            let finalTranscript = '';
+            let isUserStopping = false;
+
+            // Sự kiện khi bấm nút Bắt đầu
+            startBtn.addEventListener('click', () => {
+                try {
+                    finalTranscript = ''; 
+                    finalSpan.innerText = '';
+                    interimSpan.innerText = '';
+                    isUserStopping = false;
+                    
+                    // Lấy mã ngôn ngữ đang được chọn từ dropdown menu
+                    recognition.lang = langSelect.value; 
+                    
+                    recognition.start();
+                    statusText.innerText = `Đang lắng nghe [${langSelect.options[langSelect.selectedIndex].text}]...`;
+                    statusText.style.color = "#2ecc71";
+                    
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    langSelect.disabled = true; // Khóa menu chọn khi đang thu âm để tránh đổi giữa chừng
+                } catch (e) {
+                    console.error("Lỗi khởi động:", e);
+                }
+            });
+
+            // Sự kiện khi bấm nút Dừng
+            stopBtn.addEventListener('click', () => {
+                isUserStopping = true;
+                recognition.stop();
+                statusText.innerText = "Đã dừng nhận diện.";
+                statusText.style.color = "#e74c3c";
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                langSelect.disabled = false; // Mở khóa lại menu chọn ngôn ngữ
+                interimSpan.innerText = '';
+            });
+
+            // Xử lý luồng kết quả stream trả về từ API
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i] && event.results[i][0]) {
+                        const resultText = event.results[i][0].transcript;
+                        
+                        if (event.results[i].isFinal) {
+                            finalTranscript += resultText + ' ';
+                        } else {
+                            interimTranscript += resultText;
+                        }
+                    }
+                }
+
+                finalSpan.innerText = finalTranscript;
+                interimSpan.innerText = interimTranscript;
+            };
+
+            // Tự động kết nối lại nếu bị ngắt quãng giữa chừng
+            recognition.onend = () => {
+                if (!isUserStopping) { 
+                    console.log("Đang tự động kết nối lại luồng stream...");
+                    recognition.start(); 
+                }
+            };
+
+            // Xử lý lỗi hệ thống
+            recognition.onerror = (event) => {
+                console.error("Lỗi API nhận diện:", event.error);
+                if (event.error === 'not-allowed') {
+                    statusText.innerText = "Lỗi: Hãy cấp quyền Microphone cho trang web!";
+                } else {
+                    statusText.innerText = "Có lỗi xảy ra: " + event.error;
+                }
+                statusText.style.color = "#e67e22";
+            };
+        }
+    </script>
+</body>
+</html>
+
+
+<!-- <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Speech to Text Stream - Bản Chuẩn</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f7fb;
+        }
+        h2 { color: #333; }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: none;
+            margin: 10px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        #startBtn { background-color: #2ecc71; color: white; }
+        #startBtn:hover { background-color: #27ae60; }
+        #stopBtn { background-color: #e74c3c; color: white; }
+        #stopBtn:hover { background-color: #c0392b; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #output-box {
+            margin-top: 20px;
+            padding: 20px;
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            min-height: 150px;
+            text-align: left;
+            background-color: #ffffff;
+            line-height: 1.8;
+            font-size: 18px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .interim { color: #95a5a6; font-style: italic; }
+        .final { color: #2c3e50; font-weight: 500; }
+        #status { font-weight: bold; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+    <h2>Demo Speech to Text Stream (JS)</h2>
+    <p>Trạng thái: <span id="status">Sẵn sàng</span></p>
+    
+    <button id="startBtn">Bắt đầu nói</button>
+    <button id="stopBtn" disabled>Dừng lại</button>
+
+    <div id="output-box">
+        <span id="finalResult" class="final"></span>
+        <span id="interimResult" class="interim"></span>
+    </div>
+
+    <script>
+        // Khởi tạo đối tượng nhận diện giọng nói (hỗ trợ đa trình duyệt)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            document.getElementById('status').innerText = "Trình duyệt không hỗ trợ Web Speech API. Hãy dùng Chrome/Edge.";
+            document.getElementById('status').style.color = "#e74c3c";
+            document.getElementById('startBtn').disabled = true;
+        } else {
+            const recognition = new SpeechRecognition();
+            
+            // Cấu hình nhận diện liên tục và stream kết quả tạm thời
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'vi-VN'; // Ngôn ngữ Tiếng Việt
+
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const statusText = document.getElementById('status');
+            const finalSpan = document.getElementById('finalResult');
+            const interimSpan = document.getElementById('interimResult');
+
+            let finalTranscript = '';
+            let isUserStopping = false; // Biến kiểm tra người dùng chủ động dừng
+
+            // Sự kiện khi bấm nút Bắt đầu
+            startBtn.addEventListener('click', () => {
+                try {
+                    finalTranscript = ''; // Xóa dữ liệu cũ khi nói lượt mới
+                    finalSpan.innerText = '';
+                    interimSpan.innerText = '';
+                    isUserStopping = false;
+                    
+                    recognition.start();
+                    statusText.innerText = "Đang lắng nghe... Hãy nói vào microphone!";
+                    statusText.style.color = "#2ecc71";
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                } catch (e) {
+                    console.error("Lỗi khởi động:", e);
+                }
+            });
+
+            // Sự kiện khi bấm nút Dừng
+            stopBtn.addEventListener('click', () => {
+                isUserStopping = true;
+                recognition.stop();
+                statusText.innerText = "Đã dừng nhận diện.";
+                statusText.style.color = "#e74c3c";
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                interimSpan.innerText = '';
+            });
+
+            // Xử lý luồng kết quả stream trả về từ API
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    // Kiểm tra kỹ cấu trúc dữ liệu trả về để loại bỏ hoàn toàn lỗi undefined
+                    if (event.results[i] && event.results[i][0]) {
+                        const resultText = event.results[i][0].transcript;
+                        
+                        if (event.results[i].isFinal) {
+                            finalTranscript += resultText + ' ';
+                        } else {
+                            interimTranscript += resultText;
+                        }
+                    }
+                }
+
+                // Render văn bản theo thời gian thực (Real-time update)
+                finalSpan.innerText = finalTranscript;
+                interimSpan.innerText = interimTranscript;
+            };
+
+            // Tự động khôi phục kết nối stream nếu bị timeout đột ngột (nhưng không phải do người dùng bấm Dừng)
+            recognition.onend = () => {
+                if (!isUserStopping) { 
+                    console.log("Stream bị ngắt quãng, đang tự động kết nối lại...");
+                    recognition.start(); 
+                }
+            };
+
+            // Xử lý kiểm tra lỗi hệ thống
+            recognition.onerror = (event) => {
+                console.error("Lỗi API nhận diện:", event.error);
+                if (event.error === 'not-allowed') {
+                    statusText.innerText = "Lỗi: Trình duyệt chưa được cấp quyền truy cập Microphone!";
+                } else {
+                    statusText.innerText = "Có lỗi xảy ra: " + event.error;
+                }
+                statusText.style.color = "#e67e22";
+            };
+        }
+    </script>
+</body>
+</html> -->

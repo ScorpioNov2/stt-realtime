@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Vox Rus｜real‑time speech studio</title>
+    <style>
+        /* ----------------------------- CSS variables (no magic numbers) ----------------------------- */
+        :root {
+            /* light theme (default) */
+            --bg-body: #efeeea;
+            --bg-surface: rgba(255, 255, 255, 0.96);
+            --bg-elevated: #ffffff;
+            --text-primary: #1e2a32;
+            --text-secondary: #4a5b6e;
+            --text-muted: #7c8b9c;
+            --border-light: #e2e6ec;
+            --accent: #2c5f8a;
+            --accent-soft: #eef2fa;
+            --accent-glow: rgba(44, 95, 138, 0.15);
+            --record-active: #bc3f2e;
+            --record-glow: rgba(188, 63, 46, 0.2);
+            --interim-bg: #f8fafd;
+            --interim-border: #dce5f0;
+            --scrollbar-track: #e9edf2;
+            --scrollbar-thumb: #cbd5e1;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.05);
+        }
+
+        body.dark {
+            --bg-body: #12161c;
+            --bg-surface: #1a1f2a;
+            --bg-elevated: #222835;
+            --text-primary: #eef2fb;
+            --text-secondary: #b9c3d4;
+            --text-muted: #8e9aae;
+            --border-light: #2f3543;
+            --accent: #6c9bcf;
+            --accent-soft: #202a38;
+            --accent-glow: rgba(108, 155, 207, 0.2);
+            --record-active: #dd5a46;
+            --record-glow: rgba(221, 90, 70, 0.25);
+            --interim-bg: #1e2532;
+            --interim-border: #2f3848;
+            --scrollbar-track: #232a36;
+            --scrollbar-thumb: #3e4758;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-body);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            color: var(--text-primary);
+            transition: background 0.25s ease, color 0.2s ease;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* main card */
+        .app-card {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--bg-surface);
+            backdrop-filter: blur(0px);
+            border-radius: 2rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        /* header area */
+        .header {
+            padding: 1.5rem 2rem 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .title-section h1 {
+            font-size: 1.7rem;
+            font-weight: 550;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+        }
+
+        .title-section p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            background: var(--accent-soft);
+            border: 1px solid var(--border-light);
+            border-radius: 2rem;
+            padding: 0.45rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .status-chip {
+            font-size: 0.7rem;
+            background: var(--accent-soft);
+            padding: 0.35rem 1rem;
+            border-radius: 2rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 470;
+        }
+
+        .led-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #5f9c6b;
+            transition: background 0.2s;
+        }
+        .led-dot.recording-led {
+            background: var(--record-active);
+            box-shadow: 0 0 6px var(--record-active);
+            animation: softPulse 1.2s infinite;
+        }
+
+        @keyframes softPulse {
+            0% { opacity: 0.5; transform: scale(0.9);}
+            100% { opacity: 1; transform: scale(1.1);}
+        }
+
+        /* controls */
+        .controls {
+            padding: 1rem 2rem;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .btn {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-light);
+            padding: 0.6rem 1.6rem;
+            border-radius: 2.2rem;
+            font-weight: 500;
+            font-size: 0.8rem;
+            font-family: inherit;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .btn-primary.recording-active {
+            background: var(--record-active);
+            border-color: var(--record-active);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-soft);
+            transform: translateY(-1px);
+        }
+        .btn-primary:hover {
+            filter: brightness(1.05);
+            transform: translateY(-1px);
+        }
+        .btn:active { transform: translateY(1px); }
+
+        /* unified transcript area */
+        .transcript-panel {
+            margin: 1.2rem 1.5rem 1.5rem 1.5rem;
+            background: var(--bg-elevated);
+            border-radius: 1.5rem;
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+        }
+
+        .messages-wrapper {
+            height: 460px;
+            overflow-y: auto;
+            padding: 1.2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            scroll-behavior: smooth;
+        }
+
+        /* custom scroll */
+        .messages-wrapper::-webkit-scrollbar {
+            width: 5px;
+        }
+        .messages-wrapper::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 8px;
+        }
+        .messages-wrapper::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 8px;
+        }
+
+        /* message bubbles */
+        .msg-item {
+            display: flex;
+            flex-direction: column;
+            animation: fadeSlide 0.18s ease-out;
+        }
+
+        .msg-bubble {
+            background: var(--interim-bg);
+            border-radius: 1.2rem;
+            padding: 0.8rem 1.2rem;
+            max-width: 92%;
+            border-left: 3px solid var(--accent);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .msg-time {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            letter-spacing: 0.2px;
+        }
+
+        .msg-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        /* interim specific */
+        .msg-interim {
+            background: var(--interim-bg);
+            border-left-color: #c9a03d;
+            opacity: 0.95;
+        }
+        .msg-interim .msg-text {
+            font-style: normal;
+            font-weight: 460;
+        }
+        .cursor-blink {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: var(--accent);
+            margin-left: 3px;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .empty-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 2rem 1rem;
+            background: var(--bg-elevated);
+            border-radius: 1.2rem;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        footer {
+            padding: 1rem 2rem 1.5rem;
+            font-size: 0.7rem;
+            text-align: center;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-light);
+        }
+
+        @media (max-width: 650px) {
+            body { padding: 1rem; }
+            .controls { padding: 1rem 1.5rem; }
+            .btn { padding: 0.5rem 1.2rem; font-size: 0.75rem; }
+            .messages-wrapper { height: 380px; }
+            .msg-bubble { max-width: 98%; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-card" id="appRoot">
+    <div class="header">
+        <div class="title-section">
+            <h1>Vox · Русский</h1>
+            <p>речевой тренажёр с STT в реальном времени (Vosk offline)</p>
+        </div>
+        <div class="header-actions">
+            <div class="status-chip">
+                <span class="led-dot" id="ledStatus"></span>
+                <span id="statusMessage">соединение</span>
+            </div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Сменить тему">🌙 Тёмная</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" id="recordBtn">🎙️ Начать запись</button>
+        <button class="btn btn-secondary" id="clearBtn">Очистить лог</button>
+        <button class="btn btn-secondary" id="saveBtn">Сохранить .txt</button>
+    </div>
+
+    <div class="transcript-panel">
+        <div class="messages-wrapper" id="messageWrapper">
+            <div class="empty-placeholder" id="emptyMsgHint">
+                ✨ Нажмите «Начать запись» и произнесите фразу на русском языке.<br>
+                Распознавание появится здесь в реальном времени.
+            </div>
+        </div>
+    </div>
+    <footer>
+        WebSocket · 16kHz real‑time · умная прокрутка (не сбивает просмотр истории)
+    </footer>
+</div>
+
+<script>
+    (function(){
+        // ---------- configuration (no magic numbers, functional core unchanged) ----------
+        const WS_URL = 'ws://localhost:8001/ws/stream';
+        const TARGET_SR = 16000;
+        const CHUNK_MS = 250;
+        const SAMPLES_PER_CHUNK = Math.floor(TARGET_SR * CHUNK_MS / 1000); // 4000
+
+        // DOM elements
+        const recordBtn = document.getElementById('recordBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusSpan = document.getElementById('statusMessage');
+        const ledDot = document.getElementById('ledStatus');
+        const messagesWrapper = document.getElementById('messageWrapper');
+        const emptyHint = document.getElementById('emptyMsgHint');
+        const themeToggle = document.getElementById('themeToggle');
+
+        // core state
+        let ws = null;
+        let audioCtx = null;
+        let mediaStream = null;
+        let processor = null;
+        let isRecording = false;
+        let finalTexts = [];       // store final lines for saving
+        let pendingBuffer = [];
+
+        // UI streaming references
+        let currentInterimNode = null;    // DOM element for current partial text
+        let autoScrollEnabled = true;      // smart scroll: only when user at bottom
+
+        // --- helper functions ---
+        function removeEmptyPlaceholder() {
+            if (emptyHint && emptyHint.parentNode === messagesWrapper) {
+                emptyHint.remove();
+            }
+        }
+
+        function updateLedAndStatus(msg, isError = false, isRecordingActive = false) {
+            statusSpan.textContent = msg;
+            if (isError) {
+                ledDot.style.background = '#bc3f2e';
+                ledDot.style.boxShadow = 'none';
+                ledDot.classList.remove('recording-led');
+            } else if (isRecordingActive) {
+                ledDot.style.background = 'var(--record-active)';
+                ledDot.classList.add('recording-led');
+            } else {
+                ledDot.style.background = '#5f9c6b';
+                ledDot.classList.remove('recording-led');
+                ledDot.style.boxShadow = 'none';
+            }
+        }
+
+        // scroll only if user is at bottom or auto-scroll flag true
+        function scrollToBottomIfNeeded() {
+            if (!autoScrollEnabled) return;
+            messagesWrapper.scrollTop = messagesWrapper.scrollHeight;
+        }
+
+        // detect scroll position to enable/disable auto-scroll
+        function onScrollHandler() {
+            if (!messagesWrapper) return;
+            const scrollTop = messagesWrapper.scrollTop;
+            const maxScroll = messagesWrapper.scrollHeight - messagesWrapper.clientHeight;
+            const isAtBottom = Math.abs(scrollTop - maxScroll) <= 5;
+            autoScrollEnabled = isAtBottom;
+        }
+
+        // add final message (permanent)
+        function addFinalMessage(text) {
+            if (!text || text.trim() === '') return;
+            removeEmptyPlaceholder();
+            finalTexts.push(text.trim());
+            const timeStr = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'msg-item';
+            msgDiv.innerHTML = `
+                <div class="msg-bubble">
+                    <div class="msg-time">${timeStr}</div>
+                    <div class="msg-text">${escapeHtml(text.trim())}</div>
+                </div>
+            `;
+            messagesWrapper.appendChild(msgDiv);
+            // remove current interim if any
+            if (currentInterimNode && currentInterimNode.parentNode === messagesWrapper) {
+                currentInterimNode.remove();
+                currentInterimNode = null;
+            }
+            scrollToBottomIfNeeded();
+        }
+
+        // update or create interim message (partial)
+        function updateInterim(partialText) {
+            removeEmptyPlaceholder();
+            const displayText = partialText || "...";
+            if (currentInterimNode && currentInterimNode.parentNode === messagesWrapper) {
+                const textSpan = currentInterimNode.querySelector('.msg-text');
+                if (textSpan) {
+                    textSpan.innerHTML = escapeHtml(displayText) + '<span class="cursor-blink"></span>';
+                }
+                scrollToBottomIfNeeded();
+                return;
+            }
+            // create new interim element
+            const interimDiv = document.createElement('div');
+            interimDiv.className = 'msg-item';
+            interimDiv.innerHTML = `
+                <div class="msg-bubble msg-interim">
+                    <div class="msg-time">⤷ распознаётся</div>
+                    <div class="msg-text">${escapeHtml(displayText)}<span class="cursor-blink"></span></div>
+                </div>
+            `;
+            messagesWrapper.appendChild(interimDiv);
+            currentInterimNode = interimDiv;
+            scrollToBottomIfNeeded();
+        }
+
+        function clearInterim() {
+            if (currentInterimNode && currentInterimNode.parentNode === messagesWrapper) {
+                currentInterimNode.remove();
+                currentInterimNode = null;
+            }
+        }
+
+        function clearHistory() {
+            const allMessages = messagesWrapper.querySelectorAll('.msg-item');
+            allMessages.forEach(msg => msg.remove());
+            if (currentInterimNode) currentInterimNode = null;
+            finalTexts = [];
+            if (messagesWrapper.children.length === 0 || (emptyHint && emptyHint.parentNode !== messagesWrapper)) {
+                if (!emptyHint.parentNode) messagesWrapper.appendChild(emptyHint);
+                emptyHint.style.display = '';
+            }
+            scrollToBottomIfNeeded();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // ----- WebSocket (full original protocol, only UI callbacks improved) -----
+        function connectWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+            ws = new WebSocket(WS_URL);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                updateLedAndStatus('соединено', false, false);
+                recordBtn.disabled = false;
+                if (!isRecording) updateLedAndStatus('готово', false, false);
+            };
+            ws.onclose = () => {
+                updateLedAndStatus('потеря связи, переподключение...', true);
+                recordBtn.disabled = true;
+                if (isRecording) stopRecording();
+                setTimeout(() => connectWebSocket(), 2800);
+            };
+            ws.onerror = () => {
+                updateLedAndStatus('ошибка WebSocket (сервер Vosk?)', true);
+                recordBtn.disabled = true;
+            };
+            ws.onmessage = (ev) => {
+                try {
+                    const data = JSON.parse(ev.data);
+                    if (data.type === 'partial') {
+                        const part = data.text || '';
+                        updateInterim(part.length ? part : '…');
+                    } else if (data.type === 'final') {
+                        const final = data.text;
+                        if (final && final.trim().length > 0) {
+                            clearInterim();
+                            addFinalMessage(final.trim());
+                        } else {
+                            clearInterim();
+                        }
+                        if (isRecording && !currentInterimNode) {
+                            // keep silent but ready for next partial
+                        }
+                    } else if (data.type === 'error') {
+                        updateLedAndStatus(`ошибка: ${data.text}`, true);
+                    }
+                } catch(e) { console.warn(e); }
+            };
+        }
+
+        // ---- Audio + resample (preserve original robust algorithm) ----
+        async function startRecording() {
+            if (isRecording) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                updateLedAndStatus('подключение к серверу...', false);
+                connectWebSocket();
+                await new Promise(r => setTimeout(r, 700));
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    updateLedAndStatus('не удалось подключиться к серверу', true);
+                    return;
+                }
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                mediaStream = stream;
+                const tempCtx = new AudioContext();
+                const nativeRate = tempCtx.sampleRate;
+                await tempCtx.close();
+                audioCtx = new AudioContext({ sampleRate: nativeRate });
+                const ratio = audioCtx.sampleRate / TARGET_SR;
+
+                const source = audioCtx.createMediaStreamSource(mediaStream);
+                const bufferSize = 8192;
+                processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+                pendingBuffer = [];
+
+                processor.onaudioprocess = (e) => {
+                    if (!isRecording) return;
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const outLen = Math.floor(inputData.length / ratio);
+                    for (let i = 0; i < outLen; i++) {
+                        const srcPos = i * ratio;
+                        const idx = Math.floor(srcPos);
+                        const frac = srcPos - idx;
+                        let sample;
+                        if (idx + 1 < inputData.length) {
+                            sample = inputData[idx] * (1 - frac) + inputData[idx + 1] * frac;
+                        } else {
+                            sample = inputData[idx];
+                        }
+                        pendingBuffer.push(sample);
+                    }
+                    while (pendingBuffer.length >= SAMPLES_PER_CHUNK) {
+                        const chunk = pendingBuffer.splice(0, SAMPLES_PER_CHUNK);
+                        sendPCM16(chunk);
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+                await audioCtx.resume();
+
+                isRecording = true;
+                recordBtn.textContent = '⏹️ Остановить';
+                recordBtn.classList.add('recording-active');
+                updateLedAndStatus('активная запись · говорите', false, true);
+                clearInterim(); // fresh start
+                removeEmptyPlaceholder();
+                scrollToBottomIfNeeded();
+            } catch(err) {
+                console.error(err);
+                updateLedAndStatus('ошибка микрофона: ' + err.message, true);
+                stopRecording();
+            }
+        }
+
+        function sendPCM16(floatSamples) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            const int16 = new Int16Array(floatSamples.length);
+            for (let i = 0; i < floatSamples.length; i++) {
+                let s = Math.max(-1, Math.min(1, floatSamples[i]));
+                s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                int16[i] = s;
+            }
+            ws.send(int16.buffer);
+        }
+
+        function stopRecording() {
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            if (audioCtx) {
+                audioCtx.close().catch(e=>{});
+                audioCtx = null;
+            }
+            pendingBuffer = [];
+            isRecording = false;
+            recordBtn.textContent = '🎙️ Начать запись';
+            recordBtn.classList.remove('recording-active');
+            updateLedAndStatus('запись остановлена', false, false);
+            if (currentInterimNode) {
+                // keep but mark with subtle style
+                const interimText = currentInterimNode.querySelector('.msg-text');
+                if (interimText) {
+                    let base = interimText.innerText.replace(/[|]$/, '');
+                    interimText.innerHTML = escapeHtml(base) + ' ⏸';
+                }
+            }
+        }
+
+        // ----- Button handlers -----
+        recordBtn.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    updateLedAndStatus('подключение...');
+                    connectWebSocket();
+                    await new Promise(r => setTimeout(r, 550));
+                    if (!ws || ws.readyState !== WebSocket.OPEN) {
+                        updateLedAndStatus('сервер не отвечает (порт 8001)', true);
+                        return;
+                    }
+                }
+                await startRecording();
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            clearHistory();
+            if (isRecording) {
+                updateLedAndStatus('лог очищен, запись продолжается', false, true);
+            } else {
+                updateLedAndStatus('история удалена', false);
+            }
+        });
+
+        saveBtn.addEventListener('click', () => {
+            if (finalTexts.length === 0) {
+                updateLedAndStatus('нет текста для сохранения', true);
+                setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) updateLedAndStatus('готово', false);
+                }, 1800);
+                return;
+            }
+            const content = finalTexts.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+            a.download = `russian_phrases_${dateStr}.txt`;
+            a.href = URL.createObjectURL(blob);
+            a.click();
+            URL.revokeObjectURL(a.href);
+            updateLedAndStatus('сохранено в .txt', false);
+            setTimeout(() => {
+                if (ws && ws.readyState === WebSocket.OPEN && !isRecording) updateLedAndStatus('готово', false);
+            }, 1500);
+        });
+
+        // ----- smart scroll listener -----
+        messagesWrapper.addEventListener('scroll', onScrollHandler);
+
+        // ----- Theme switching (light/dark) using CSS variables, default light #efeeea -----
+        const rootEl = document.documentElement;
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark');
+                themeToggle.textContent = '☀️ Светлая';
+                localStorage.setItem('vox_theme', 'dark');
+            } else {
+                document.body.classList.remove('dark');
+                themeToggle.textContent = '🌙 Тёмная';
+                localStorage.setItem('vox_theme', 'light');
+            }
+        }
+        const savedTheme = localStorage.getItem('vox_theme');
+        if (savedTheme === 'dark') {
+            setTheme('dark');
+        } else {
+            setTheme('light');
+        }
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.body.classList.contains('dark');
+            setTheme(isDark ? 'light' : 'dark');
+        });
+
+        // ----- initialization -----
+        connectWebSocket();
+        // reset scroll flag on mount
+        autoScrollEnabled = true;
+
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (audioCtx) audioCtx.close();
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+        });
+    })();
+</script>
+</body>
+</html>

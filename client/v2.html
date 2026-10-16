@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>VocaLive — Russian Speech Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at 10% 30%, #0b1120, #0a0f1c);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* glassmorphic main card */
+        .glass-panel {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(18, 25, 40, 0.65);
+            backdrop-filter: blur(16px);
+            border-radius: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* header area */
+        .header {
+            padding: 1.5rem 2rem 0.8rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .title-section h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #E8EFF9, #B9D0F0);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .title-section p {
+            font-size: 0.75rem;
+            color: #8d9bb0;
+            margin-top: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge {
+            background: rgba(10, 20, 35, 0.7);
+            border-radius: 60px;
+            padding: 0.4rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #b9d0f0;
+            border: 1px solid rgba(90, 150, 220, 0.3);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .led {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2ecc71;
+            box-shadow: 0 0 6px #2ecc71;
+            transition: all 0.2s;
+        }
+        .led.off { background: #7f8c8d; box-shadow: none; }
+        .led.rec { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; animation: pulseRed 1.2s infinite; }
+
+        @keyframes pulseRed {
+            0% { opacity: 0.5; transform: scale(0.9);}
+            100% { opacity: 1; transform: scale(1.2);}
+        }
+
+        /* controls */
+        .controls {
+            padding: 1.2rem 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn {
+            background: rgba(20, 30, 50, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.7rem 1.6rem;
+            border-radius: 2rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+            font-family: inherit;
+            color: #eef3ff;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            backdrop-filter: blur(5px);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #2c5f8a;
+            border-color: #5b8cbb;
+            box-shadow: 0 2px 10px rgba(0, 80, 120, 0.3);
+        }
+
+        .btn-primary.recording {
+            background: #c2412c;
+            border-color: #e07a5f;
+            box-shadow: 0 0 12px rgba(194, 65, 44, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(45, 55, 75, 0.8);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            background: rgba(50, 70, 100, 0.9);
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary:hover { background: #3a6e9e; }
+        .btn-primary.recording:hover { background: #d4513a; }
+
+        /* unified transcript container — tất cả text trong 1 ô */
+        .transcript-unified {
+            margin: 0 1.5rem 1.8rem 1.5rem;
+            background: rgba(8, 14, 24, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 1.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .message-area {
+            height: 440px;
+            overflow-y: auto;
+            padding: 1.2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            scroll-behavior: smooth;
+        }
+
+        /* custom scrollbar */
+        .message-area::-webkit-scrollbar {
+            width: 5px;
+        }
+        .message-area::-webkit-scrollbar-track {
+            background: rgba(200, 210, 230, 0.05);
+            border-radius: 8px;
+        }
+        .message-area::-webkit-scrollbar-thumb {
+            background: rgba(90, 130, 180, 0.5);
+            border-radius: 8px;
+        }
+
+        /* message bubbles style */
+        .msg {
+            display: flex;
+            flex-direction: column;
+            animation: fadeSlide 0.2s ease-out;
+        }
+
+        .msg-bubble {
+            background: rgba(25, 35, 55, 0.9);
+            border-radius: 1.5rem;
+            padding: 0.85rem 1.2rem;
+            max-width: 95%;
+            align-self: flex-start;
+            border-left: 3px solid #3b82f6;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.1s;
+        }
+
+        .msg-time {
+            font-size: 0.6rem;
+            color: #8d9bb5;
+            margin-bottom: 5px;
+            letter-spacing: 0.3px;
+        }
+
+        .msg-text {
+            font-size: 1rem;
+            line-height: 1.45;
+            color: #f0f3fc;
+            font-weight: 450;
+            word-break: break-word;
+        }
+
+        /* interim (live streaming) style - same container, distinct look */
+        .msg-interim {
+            background: rgba(35, 55, 85, 0.7);
+            border-left: 3px solid #f39c12;
+            backdrop-filter: blur(4px);
+        }
+        .msg-interim .msg-text {
+            color: #ffecb3;
+            font-style: normal;
+            font-weight: 500;
+        }
+        .live-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: #f5b042;
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #6d7b97;
+            font-size: 0.9rem;
+            padding: 2rem 1rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 1.5rem;
+            margin: auto;
+            width: 100%;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        footer {
+            padding: 1rem 2rem 1.5rem;
+            font-size: 0.7rem;
+            text-align: center;
+            color: #6d7a97;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            letter-spacing: 0.3px;
+        }
+
+        @media (max-width: 650px) {
+            body { padding: 1rem; }
+            .controls { padding: 1rem 1.5rem; gap: 0.7rem; }
+            .btn { padding: 0.5rem 1.2rem; font-size: 0.75rem;}
+            .message-area { height: 380px; }
+            .msg-bubble { max-width: 100%;}
+        }
+    </style>
+</head>
+<body>
+<div class="glass-panel">
+    <div class="header">
+        <div class="title-section">
+            <h1>VocaLive · Русский</h1>
+            <p>речевой тренажёр в реальном времени · Vosk offline</p>
+        </div>
+        <div class="status-badge" id="statusBadge">
+            <span class="led off" id="ledIndicator"></span>
+            <span id="statusText">инициализация</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" id="recordBtn">🎙️ Начать запись</button>
+        <button class="btn btn-secondary" id="clearBtn">🗑️ Очистить</button>
+        <button class="btn btn-secondary" id="saveBtn">💾 Сохранить .txt</button>
+    </div>
+
+    <!-- единый контейнер для всех сообщений (финальные + промежуточные) -->
+    <div class="transcript-unified">
+        <div class="message-area" id="messageContainer">
+            <div class="empty-message" id="emptyMsgPlaceholder">
+                ✨ Нажмите «Начать запись» и произнесите фразу на русском<br>
+                Распознавание появится здесь в реальном времени
+            </div>
+        </div>
+    </div>
+    <footer>
+        WebSocket • 16 kHz real‑time • автоматическая ресемплизация • отображается последний текст
+    </footer>
+</div>
+
+<script>
+    (function(){
+        // ---------- CONFIG (полностью сохранена функциональность) ----------
+        const WS_URL = 'ws://localhost:8001/ws/stream';
+        const TARGET_SR = 16000;
+        const CHUNK_MS = 250;
+        const samplesPerChunk = Math.floor(TARGET_SR * CHUNK_MS / 1000); // 4000
+
+        // DOM elements
+        const recordBtn = document.getElementById('recordBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusSpan = document.getElementById('statusText');
+        const ledIndicator = document.getElementById('ledIndicator');
+        const messageContainer = document.getElementById('messageContainer');
+        const emptyMsgPlaceholder = document.getElementById('emptyMsgPlaceholder');
+
+        // State
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let scriptProcessor = null;
+        let isRecording = false;
+        let finalTextsArray = [];     // хранит финальные строки для сохранения
+        let pendingBuffer = [];
+
+        // Временный идентификатор для элемента "печатает" (interim)
+        let currentInterimElement = null;   // последний созданный DOM элемент для частичного текста
+
+        // ----- Вспомогательные UI -----
+        function setStatus(msg, isError = false, isActive = false) {
+            statusSpan.textContent = msg;
+            if (isError) {
+                ledIndicator.className = 'led off';
+                ledIndicator.style.background = '#e74c3c';
+                ledIndicator.style.boxShadow = 'none';
+            } else if (isActive) {
+                ledIndicator.className = 'led rec';
+            } else {
+                ledIndicator.className = 'led';
+                ledIndicator.style.background = '#2ecc71';
+                ledIndicator.style.boxShadow = '0 0 6px #2ecc71';
+            }
+        }
+
+        // Удалить placeholder пустоты, если он существует
+        function removeEmptyPlaceholder() {
+            if (emptyMsgPlaceholder && emptyMsgPlaceholder.parentNode === messageContainer) {
+                emptyMsgPlaceholder.remove();
+            }
+        }
+
+        // Добавить финальное сообщение в единый лог (как новую запись)
+        function appendFinalMessage(text) {
+            if (!text || text.trim() === '') return;
+            removeEmptyPlaceholder();
+            finalTextsArray.push(text.trim());
+            const timestamp = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'msg';
+            msgDiv.innerHTML = `
+                <div class="msg-bubble">
+                    <div class="msg-time">${timestamp}</div>
+                    <div class="msg-text">${escapeHtml(text.trim())}</div>
+                </div>
+            `;
+            messageContainer.appendChild(msgDiv);
+            // удаляем текущий элемент промежуточного текста, если он есть (он устарел)
+            if (currentInterimElement && currentInterimElement.parentNode === messageContainer) {
+                currentInterimElement.remove();
+                currentInterimElement = null;
+            }
+            scrollToBottom();
+        }
+
+        // Показать / обновить промежуточный текст (partial) – единый блок внизу контейнера
+        function updateInterimMessage(partialText) {
+            removeEmptyPlaceholder();
+            // Если существует элемент промежуточного сообщения, просто обновляем его текст
+            if (currentInterimElement && currentInterimElement.parentNode === messageContainer) {
+                const textSpan = currentInterimElement.querySelector('.msg-text');
+                if (textSpan) {
+                    textSpan.innerHTML = escapeHtml(partialText) + '<span class="live-cursor"></span>';
+                }
+                scrollToBottom();
+                return;
+            }
+            // Создаём новый элемент для промежуточного распознавания
+            const interimDiv = document.createElement('div');
+            interimDiv.className = 'msg';
+            interimDiv.innerHTML = `
+                <div class="msg-bubble msg-interim">
+                    <div class="msg-time">● распознаётся</div>
+                    <div class="msg-text">${escapeHtml(partialText)}<span class="live-cursor"></span></div>
+                </div>
+            `;
+            messageContainer.appendChild(interimDiv);
+            currentInterimElement = interimDiv;
+            scrollToBottom();
+        }
+
+        // Удалить промежуточное сообщение (после получения final)
+        function clearInterimMessage() {
+            if (currentInterimElement && currentInterimElement.parentNode === messageContainer) {
+                currentInterimElement.remove();
+                currentInterimElement = null;
+            }
+        }
+
+        // Очистить всю историю (финальные сообщения и interim)
+        function clearFullHistory() {
+            // Удаляем все .msg из контейнера, кроме placeholder если он потом понадобится
+            const allMessages = messageContainer.querySelectorAll('.msg');
+            allMessages.forEach(msg => msg.remove());
+            if (currentInterimElement) currentInterimElement = null;
+            finalTextsArray = [];
+            // Если нет никаких сообщений, показываем placeholder
+            if (messageContainer.children.length === 0 || 
+                (messageContainer.children.length === 1 && messageContainer.children[0] === emptyMsgPlaceholder)) {
+                if (!emptyMsgPlaceholder.parentNode) messageContainer.appendChild(emptyMsgPlaceholder);
+                emptyMsgPlaceholder.style.display = '';
+            } else {
+                if (emptyMsgPlaceholder.parentNode) emptyMsgPlaceholder.remove();
+            }
+            scrollToBottom();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) { return c; });
+        }
+
+        function scrollToBottom() {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        // ---------- WEBSOCKET (сохраняем протокол обмена) ----------
+        function connectWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+            ws = new WebSocket(WS_URL);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                setStatus('Соединение установлено', false, false);
+                recordBtn.disabled = false;
+                if (!isRecording) {
+                    setStatus('Готов к записи', false);
+                }
+            };
+
+            ws.onclose = () => {
+                setStatus('Потеря соединения, переподключение...', true);
+                recordBtn.disabled = true;
+                if (isRecording) stopRecording();
+                setTimeout(() => connectWebSocket(), 2500);
+            };
+
+            ws.onerror = () => {
+                setStatus('Ошибка WebSocket (сервер Vosk?)', true);
+                recordBtn.disabled = true;
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'partial') {
+                        const partial = data.text || '';
+                        if (partial.trim().length > 0 || partial.length > 0) {
+                            updateInterimMessage(partial);
+                        } else if (partial === '' && currentInterimElement) {
+                            // если текст пустой, но мы уже показываем interim, можно оставить "..." 
+                            updateInterimMessage('...');
+                        }
+                    }
+                    else if (data.type === 'final') {
+                        const finalText = data.text;
+                        if (finalText && finalText.trim().length > 0) {
+                            // перед добавлением финала убираем промежуточный блок
+                            clearInterimMessage();
+                            appendFinalMessage(finalText.trim());
+                        } else {
+                            // если пустой финал — просто чистим interim
+                            clearInterimMessage();
+                        }
+                        // Если запись продолжается — показываем новый пустой индикатор (готовность)
+                        if (isRecording) {
+                            // Не показываем лишнего, но можно создать тихий interim "слушаю..."
+                            if (!currentInterimElement && finalTextsArray.length >=0) {
+                                // Не спамим, просто ждём следующий partial
+                            }
+                        }
+                    }
+                    else if (data.type === 'error') {
+                        setStatus('Ошибка распознавания: ' + data.text, true);
+                    }
+                } catch(e) { console.warn(e); }
+            };
+        }
+
+        // ---------- АУДИО / RESAMPLE (полностью сохранён оригинальный механизм) ----------
+        async function startRecording() {
+            if (isRecording) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                setStatus('Подключение к серверу...', false);
+                connectWebSocket();
+                await new Promise(r => setTimeout(r, 700));
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    setStatus('Не удалось подключиться к серверу', true);
+                    return;
+                }
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                mediaStream = stream;
+
+                const tempCtx = new AudioContext();
+                const nativeRate = tempCtx.sampleRate;
+                await tempCtx.close();
+                audioContext = new AudioContext({ sampleRate: nativeRate });
+                const ratio = audioContext.sampleRate / TARGET_SR;
+
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                const bufferSize = 8192;
+                scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+                pendingBuffer = [];
+
+                scriptProcessor.onaudioprocess = (e) => {
+                    if (!isRecording) return;
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const outLen = Math.floor(inputData.length / ratio);
+                    for (let i = 0; i < outLen; i++) {
+                        const srcPos = i * ratio;
+                        const idx = Math.floor(srcPos);
+                        const frac = srcPos - idx;
+                        let sample;
+                        if (idx + 1 < inputData.length) {
+                            sample = inputData[idx] * (1 - frac) + inputData[idx + 1] * frac;
+                        } else {
+                            sample = inputData[idx];
+                        }
+                        pendingBuffer.push(sample);
+                    }
+                    while (pendingBuffer.length >= samplesPerChunk) {
+                        const chunk = pendingBuffer.splice(0, samplesPerChunk);
+                        sendPCM16(chunk);
+                    }
+                };
+
+                source.connect(scriptProcessor);
+                scriptProcessor.connect(audioContext.destination);
+                await audioContext.resume();
+
+                isRecording = true;
+                recordBtn.textContent = '⏹️ Остановить';
+                recordBtn.classList.add('recording');
+                setStatus('Активная запись · говорите по-русски', false, true);
+                // Убираем временные сообщения при старте новой записи
+                clearInterimMessage();
+                // Если в контейнере нет сообщений, placeholder должен исчезнуть при первом partial или финале
+                removeEmptyPlaceholder();
+                scrollToBottom();
+            } catch (err) {
+                console.error(err);
+                setStatus('Ошибка доступа к микрофону: ' + err.message, true);
+                stopRecording();
+            }
+        }
+
+        function sendPCM16(float32Samples) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            const int16 = new Int16Array(float32Samples.length);
+            for (let i = 0; i < float32Samples.length; i++) {
+                let s = Math.max(-1, Math.min(1, float32Samples[i]));
+                s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                int16[i] = s;
+            }
+            ws.send(int16.buffer);
+        }
+
+        function stopRecording() {
+            if (scriptProcessor) {
+                scriptProcessor.disconnect();
+                scriptProcessor = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            if (audioContext) {
+                audioContext.close().catch(e=>{});
+                audioContext = null;
+            }
+            pendingBuffer = [];
+            isRecording = false;
+            recordBtn.textContent = '🎙️ Начать запись';
+            recordBtn.classList.remove('recording');
+            setStatus('Запись остановлена', false);
+            // Не удаляем промежуточный текст полностью, но покажем, что запись кончилась
+            if (currentInterimElement) {
+                // просто меняем стиль на "запись завершена"
+                const interimTextDiv = currentInterimElement.querySelector('.msg-text');
+                if (interimTextDiv) {
+                    let originalText = interimTextDiv.innerText.replace(/[|]$/, '');
+                    interimTextDiv.innerHTML = escapeHtml(originalText) + ' ⏸';
+                }
+            }
+        }
+
+        // ---------- Обработчики кнопок ----------
+        recordBtn.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    setStatus('Соединение с сервером...');
+                    connectWebSocket();
+                    await new Promise(r => setTimeout(r, 500));
+                    if (!ws || ws.readyState !== WebSocket.OPEN) {
+                        setStatus('Сервер не отвечает, проверьте port 8001', true);
+                        return;
+                    }
+                }
+                await startRecording();
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            clearFullHistory();
+            if (isRecording) {
+                // если запись активна, interim всё равно очищаем, но состояние записи не меняем
+                clearInterimMessage();
+                setStatus('История очищена, запись продолжается', false, true);
+            } else {
+                setStatus('История удалена', false);
+            }
+        });
+
+        saveBtn.addEventListener('click', () => {
+            if (finalTextsArray.length === 0) {
+                setStatus('Нет текста для сохранения. Скажите несколько фраз.', true);
+                setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) setStatus('Готов к записи', false);
+                }, 2000);
+                return;
+            }
+            const content = finalTextsArray.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+            a.download = `russian_phrases_${dateStr}.txt`;
+            a.href = URL.createObjectURL(blob);
+            a.click();
+            URL.revokeObjectURL(a.href);
+            setStatus('Файл .txt сохранён!', false);
+            setTimeout(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) setStatus('Готов к записи', false);
+            }, 1800);
+        });
+
+        // инициализация
+        connectWebSocket();
+
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (audioContext) audioContext.close();
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+        });
+    })();
+</script>
+</body>
+</html>
